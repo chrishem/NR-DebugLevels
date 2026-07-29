@@ -12,10 +12,13 @@
     "diagnostics"
   ],
   "license": "MIT",
-  "author": "",
+  "author": {
+	"name": "Chris Hemmerly",
+	"url": "https://github.com/chrishem/NR-DebugLevels"
+  },
   "repository": {
     "type": "git",
-    "url": ""
+    "url": "https://github.com/chrishem/NR-DebugLevels"
   },
   "node-red": {
     "version": ">=2.0.0",
@@ -30,7 +33,6 @@
   },
   "files": [
     "nodes/",
-    "icons/",
     "examples/",
     "README.md",
     "LICENSE"
