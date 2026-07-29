@@ -1,0 +1,113 @@
+[
+    {
+        "id": "dl-config-example",
+        "type": "debug-level-config",
+        "name": "My Debug Channels",
+        "contextKey": "debugLevel",
+        "contextScope": "global",
+        "contextStore": "",
+        "channels": ["MQTT", "Timers", "Payloads", "State", "Network", "Hardware", "Errors", "Trace"]
+    },
+    {
+        "id": "dl-comment-setup",
+        "type": "comment",
+        "name": "── Setup: MQTT + Errors active on deploy ──",
+        "x": 190,
+        "y": 60,
+        "wires": []
+    },
+    {
+        "id": "dl-setup",
+        "type": "debug-set",
+        "name": "Debug Setup",
+        "debugConfig": "dl-config-example",
+        "bits": [true, false, false, false, false, false, true, false],
+        "x": 220,
+        "y": 120,
+        "wires": [["dl-status-debug"]]
+    },
+    {
+        "id": "dl-status-debug",
+        "type": "debug",
+        "name": "Setup state",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": true,
+        "complete": "true",
+        "targetType": "full",
+        "x": 430,
+        "y": 120,
+        "wires": []
+    },
+    {
+        "id": "dl-comment-runtime",
+        "type": "comment",
+        "name": "── Toggle MQTT channel programmatically ──",
+        "x": 180,
+        "y": 200,
+        "wires": []
+    },
+    {
+        "id": "dl-inject-enable-mqtt",
+        "type": "inject",
+        "name": "Enable MQTT",
+        "props": [
+            {"p": "debugAction", "v": "set", "vt": "str"},
+            {"p": "debugMask", "v": "1", "vt": "num"}
+        ],
+        "repeat": "",
+        "once": false,
+        "x": 160,
+        "y": 260,
+        "wires": [["dl-setup"]]
+    },
+    {
+        "id": "dl-inject-disable-mqtt",
+        "type": "inject",
+        "name": "Disable MQTT",
+        "props": [
+            {"p": "debugAction", "v": "clear", "vt": "str"},
+            {"p": "debugMask", "v": "1", "vt": "num"}
+        ],
+        "repeat": "",
+        "once": false,
+        "x": 160,
+        "y": 300,
+        "wires": [["dl-setup"]]
+    },
+    {
+        "id": "dl-comment-debug",
+        "type": "comment",
+        "name": "── Debug node: only logs while MQTT channel is active ──",
+        "x": 220,
+        "y": 380,
+        "wires": []
+    },
+    {
+        "id": "dl-inject-test-msg",
+        "type": "inject",
+        "name": "Test message",
+        "props": [{"p": "payload", "v": "Hello from a gated Debug node", "vt": "str"}],
+        "repeat": "",
+        "once": false,
+        "x": 150,
+        "y": 440,
+        "wires": [["dl-debug-mqtt"]]
+    },
+    {
+        "id": "dl-debug-mqtt",
+        "type": "debug-channel",
+        "name": "MQTT debug",
+        "debugConfig": "dl-config-example",
+        "channel": 0,
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "targetType": "msg",
+        "complete": "payload",
+        "x": 380,
+        "y": 440,
+        "wires": []
+    }
+]

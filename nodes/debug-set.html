@@ -1,0 +1,157 @@
+<script type="text/javascript">
+    RED.nodes.registerType('debug-set', {
+        category: 'debug',
+        color: '#f3b567',
+        defaults: {
+            name:        { value: '' },
+            debugConfig: { value: '', type: 'debug-level-config', required: true },
+            bits:        { value: [] }
+        },
+        inputs: 1,
+        outputs: 1,
+        icon: 'font-awesome/fa-sliders',
+        paletteLabel: 'Setup',
+        label: function () {
+            return this.name || 'Setup';
+        },
+        oneditprepare: function () {
+            var node = this;
+
+            // The source of truth for save. Seeded from the saved value, then
+            // updated the instant a checkbox is clicked — NOT re-read from the
+            // DOM at save time. Something (most likely the config field's
+            // change handler re-firing during Node-RED's own save/close
+            // sequence) can re-render #debug-set-bits back to its empty
+            // "no channels" state right before oneditsave runs, which wiped
+            // out every checkbox the user had just checked. Capturing clicks
+            // as they happen sidesteps that race entirely.
+            var liveBits = Array.isArray(node.bits) ? node.bits.slice() : [];
+
+            function renderCheckboxes() {
+                var configId = $('#node-input-debugConfig').val();
+                var container = $('#debug-set-bits');
+                container.empty();
+
+                var cfgNode = (configId && configId !== '_ADD_') ? RED.nodes.node(configId) : null;
+                var channels = (cfgNode && cfgNode.channels) || [];
+
+                if (channels.length === 0) {
+                    container.css('display', 'block');
+                    container.append('<div class="form-tips">No channels defined yet &mdash; add some in the config node first.</div>');
+                    return;
+                }
+
+                container.css({
+                    display: 'grid',
+                    'grid-template-columns': 'repeat(2, minmax(0, 1fr))',
+                    'gap': '2px 20px'
+                });
+
+                channels.forEach(function (label, i) {
+                    var row = $('<label></label>', {
+                        style: 'display:flex; align-items:center; width:auto; margin:0; padding:2px 0; cursor:pointer; font-weight:normal;'
+                    });
+                    $('<input type="checkbox">', { class: 'debug-set-bit', 'data-bit': i })
+                        .prop('checked', !!liveBits[i])
+                        .on('change', function () {
+                            liveBits[i] = this.checked;
+                        })
+                        .css({ margin: 0, flex: '0 0 auto' })
+                        .appendTo(row);
+                    $('<span></span>', {
+                        style: 'margin-left:6px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;'
+                    }).text(label || ('Channel ' + i)).appendTo(row);
+                    container.append(row);
+                });
+            }
+
+            renderCheckboxes();
+            $('#node-input-debugConfig').on('change', renderCheckboxes);
+
+            node._liveBits = liveBits;
+        },
+        oneditsave: function () {
+            var bits = (this._liveBits || []).slice();
+            for (var i = 0; i < bits.length; i++) {
+                if (bits[i] === undefined) { bits[i] = false; }
+            }
+            this.bits = bits;
+            delete this._liveBits;
+        }
+    });
+</script>
+
+<script type="text/html" data-template-name="debug-set">
+    <div class="form-row">
+        <label for="node-input-name"><i class="fa fa-tag"></i> Name</label>
+        <input type="text" id="node-input-name" placeholder="Name">
+    </div>
+
+    <div class="form-row">
+        <label for="node-input-debugConfig"><i class="fa fa-cog"></i> Config</label>
+        <input type="text" id="node-input-debugConfig">
+    </div>
+
+    <hr>
+    <div class="form-row" style="margin-bottom:4px;">
+        <label style="width:auto;"><i class="fa fa-th-list"></i> Channels active on deploy:</label>
+    </div>
+    <div id="debug-set-bits" style="min-height:140px; max-height:280px; overflow-y:auto;"></div>
+    <div class="form-tips">Checking a box here and deploying sets that channel's state immediately.
+    Wired input (see help) can also change state programmatically at runtime.</div>
+</script>
+
+<script type="text/html" data-help-name="debug-set">
+    <p>Two ways to enable/disable debug channels: check boxes here and Deploy, or send it a message.</p>
+
+    <h3>Properties</h3>
+    <dl class="message-properties">
+        <dt>Config</dt>
+        <dd>The <code>debug-level-config</code> node to control.</dd>
+        <dt>Channels active on deploy</dt>
+        <dd>Check any channel to force it <b>on</b> as soon as this node starts (every deploy that
+        recreates it). Unchecked channels are forced <b>off</b> at that same moment. This is a
+        declarative "this is the state I want" panel &mdash; it will overwrite whatever a wired
+        message previously set, every time it (re)starts.</dd>
+    </dl>
+
+    <h3>Inputs (programmatic control)</h3>
+    <p>A plain message with no special properties just reports the current state (no change).
+    To change something, set:</p>
+    <dl class="message-properties">
+        <dt>msg.debugAction <span class="property-type">boolean | string</span></dt>
+        <dd>
+            <ul>
+                <li><b>set</b> (aliases: <code>true</code>, <code>"on"</code>, <code>"enable"</code>) &mdash; enable the channels in <code>msg.debugChannel</code> (or <code>msg.debugMask</code>).</li>
+                <li><b>clear</b> (aliases: <code>false</code>, <code>"off"</code>, <code>"disable"</code>, <code>"reset"</code>) &mdash; disable the channels in <code>msg.debugChannel</code> (or <code>msg.debugMask</code>).</li>
+                <li><b>toggle</b> (alias: <code>"flip"</code>) &mdash; flip the channels in <code>msg.debugChannel</code> (or <code>msg.debugMask</code>).</li>
+                <li><b>set-all</b> (aliases: <code>"all-on"</code>, <code>"enable-all"</code>) &mdash; enable all 16 channels.</li>
+                <li><b>clear-all</b> (aliases: <code>"all-off"</code>, <code>"disable-all"</code>, <code>"reset-all"</code>) &mdash; disable all channels.</li>
+                <li><b>toggle-all</b> (aliases: <code>"flip-all"</code>, <code>"invert-all"</code>) &mdash; flip every channel independently (each channel moves to its own opposite state, not a group on/off).</li>
+                <li><b>write</b> &mdash; overwrite the entire value from <code>msg.payload</code> (or <code>msg.debugChannel</code>/<code>msg.debugMask</code> if payload is absent).</li>
+            </ul>
+            <p>Case-insensitive; a boolean is treated as shorthand for <code>set</code>/<code>clear</code> directly on <code>msg.debugChannel</code> &mdash; e.g. a dashboard switch's raw <code>msg.payload</code> can be copied straight to <code>msg.debugAction</code> without a translator function.</p>
+        </dd>
+        <dt>msg.debugChannel <span class="property-type">number | string | array</span></dt>
+        <dd>The easy way to address channels &mdash; no bitmask math required. A channel label
+        (<code>"Timers"</code>, case-insensitive) is tried first; a bit index (<code>2</code>, or
+        the digit-only string <code>"2"</code> &mdash; e.g. from an Inject node's "string" type)
+        is only used if no channel is named that. Accepts an array of either to hit several
+        channels in one message (<code>[2, 5]</code> or <code>["MQTT", "Errors"]</code>). Takes
+        priority over <code>msg.debugMask</code> when both are present.</dd>
+        <dt>msg.debugMask <span class="property-type">number</span></dt>
+        <dd>Raw bitmask the action applies to (0-65535), for when you already have the number. Ignored if <code>msg.debugChannel</code> is set.</dd>
+    </dl>
+
+    <h3>Outputs</h3>
+    <dl class="message-properties">
+        <dt>msg.debugLevel <span class="property-type">number</span></dt>
+        <dd>The current debug level integer.</dd>
+        <dt>msg.debugBits <span class="property-type">string</span></dt>
+        <dd>16-character binary string (e.g. <code>"0000000000101001"</code>).</dd>
+        <dt>msg.debugLabels <span class="property-type">array</span></dt>
+        <dd>All configured channel labels.</dd>
+        <dt>msg.debugActive <span class="property-type">array</span></dt>
+        <dd>Labels of currently active channels only.</dd>
+    </dl>
+</script>

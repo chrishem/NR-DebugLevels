@@ -1,0 +1,171 @@
+<script type="text/javascript">
+    RED.nodes.registerType('debug-channel', {
+        category: 'debug',
+        color: '#f3b567',
+        defaults: {
+            name:        { value: '' },
+            debugConfig: { value: '', type: 'debug-level-config', required: true },
+            channel:     { value: 0, required: true },
+            active:      { value: true },
+            tosidebar:   { value: true },
+            console:     { value: false },
+            targetType:  { value: 'full' },
+            complete:    { value: 'payload' }
+        },
+        inputs: 1,
+        outputs: 0,
+        icon: 'font-awesome/fa-bug',
+        paletteLabel: 'Debug',
+        label: function () {
+            if (this.name) { return this.name; }
+            var cfgNode = RED.nodes.node(this.debugConfig);
+            var channelLabel = (cfgNode && cfgNode.channels && cfgNode.channels[this.channel]) || ('channel ' + this.channel);
+            return 'debug: ' + channelLabel;
+        },
+        labelStyle: function () {
+            return this.active === false ? 'node_label_italic' : '';
+        },
+        oneditprepare: function () {
+            var node = this;
+
+            function renderChannelOptions() {
+                var configId = $('#node-input-debugConfig').val();
+                var select = $('#node-input-channel');
+                var current = node.channel;
+                select.empty();
+
+                var cfgNode = (configId && configId !== '_ADD_') ? RED.nodes.node(configId) : null;
+                var channels = (cfgNode && cfgNode.channels) || [];
+
+                if (channels.length === 0) {
+                    select.append($('<option></option>').attr('value', '').text('(no channels defined in config)'));
+                } else {
+                    channels.forEach(function (label, i) {
+                        select.append($('<option></option>').attr('value', i).text('Bit ' + i + ': ' + (label || ('Channel ' + i))));
+                    });
+                }
+                select.val(current);
+            }
+
+            function updateOutputVisibility() {
+                if ($('#node-input-targetType-select').val() === 'full') {
+                    $('#debug-channel-complete-row').hide();
+                } else {
+                    $('#debug-channel-complete-row').show();
+                }
+            }
+
+            renderChannelOptions();
+            $('#node-input-debugConfig').on('change', renderChannelOptions);
+
+            var initialTargetType = (this.targetType === 'jsonata') ? 'jsonata' : (this.targetType === 'msg' ? 'msg' : 'full');
+            $('#node-input-targetType-select')
+                .val(initialTargetType === 'full' ? 'full' : 'msg')
+                .on('change', updateOutputVisibility);
+
+            $('#node-input-complete').typedInput({
+                default: 'msg',
+                typeField: '#node-input-targetType',
+                types: ['msg', 'jsonata']
+            });
+            $('#node-input-complete').typedInput('type', initialTargetType === 'full' ? 'msg' : initialTargetType);
+            $('#node-input-complete').typedInput('value', this.targetType === 'full' ? 'payload' : this.complete);
+
+            updateOutputVisibility();
+        },
+        oneditsave: function () {
+            this.channel = parseInt($('#node-input-channel').val(), 10) || 0;
+
+            if ($('#node-input-targetType-select').val() === 'full') {
+                this.targetType = 'full';
+                this.complete = 'payload';
+            } else {
+                this.targetType = $('#node-input-targetType').val();
+                this.complete = $('#node-input-complete').val();
+            }
+        }
+    });
+</script>
+
+<script type="text/html" data-template-name="debug-channel">
+    <div class="form-row">
+        <label for="node-input-name"><i class="fa fa-tag"></i> Name</label>
+        <input type="text" id="node-input-name" placeholder="Name">
+    </div>
+
+    <div class="form-row">
+        <label for="node-input-debugConfig"><i class="fa fa-cog"></i> Config</label>
+        <input type="text" id="node-input-debugConfig">
+    </div>
+
+    <div class="form-row">
+        <label for="node-input-active"><i class="fa fa-power-off"></i> Enabled</label>
+        <input type="checkbox" id="node-input-active" style="display:inline-block; width:auto; vertical-align:top;">
+    </div>
+
+    <div class="form-row">
+        <label for="node-input-channel"><i class="fa fa-th-list"></i> Channel</label>
+        <select id="node-input-channel" style="width:70%;"></select>
+    </div>
+
+    <hr>
+    <div class="form-row">
+        <label style="width:auto;"><i class="fa fa-desktop"></i> Output to</label>
+        <input type="checkbox" id="node-input-tosidebar" style="display:inline-block; width:auto; vertical-align:middle;">
+        <label for="node-input-tosidebar" style="width:auto; margin-right:15px;">Debug sidebar</label>
+        <input type="checkbox" id="node-input-console" style="display:inline-block; width:auto; vertical-align:middle;">
+        <label for="node-input-console" style="width:auto;">Console</label>
+    </div>
+
+    <div class="form-row">
+        <label for="node-input-targetType-select"><i class="fa fa-file-code-o"></i> Output</label>
+        <select id="node-input-targetType-select" style="width:70%;">
+            <option value="full">complete msg object</option>
+            <option value="msg">a specific value</option>
+        </select>
+    </div>
+    <div class="form-row" id="debug-channel-complete-row">
+        <label for="node-input-complete">&nbsp;</label>
+        <input type="text" id="node-input-complete" style="width:70%;">
+        <input type="hidden" id="node-input-targetType">
+    </div>
+</script>
+
+<script type="text/html" data-help-name="debug-channel">
+    <p>Logs messages to the Debug sidebar (and/or console) only when its one selected
+    channel is currently active. Wire it in place of the built-in debug node wherever
+    output should depend on a debug channel.</p>
+
+    <h3>Properties</h3>
+    <dl class="message-properties">
+        <dt>Config</dt>
+        <dd>The <code>debug-level-config</code> node that defines the context variable and channel labels.</dd>
+        <dt>Enabled</dt>
+        <dd>When unchecked, the node passes through input without logging (matches the built-in debug node's on/off state).</dd>
+        <dt>Channel</dt>
+        <dd>The single channel this node logs for.</dd>
+        <dt>Output to</dt>
+        <dd>Send to the Debug sidebar, the runtime console (<code>node.warn</code>), or both.</dd>
+        <dt>Output</dt>
+        <dd>Log the complete <code>msg</code> object, or a specific <code>msg</code> property /
+        JSONata expression &mdash; same as the built-in debug node.</dd>
+    </dl>
+
+    <h3>Inputs</h3>
+    <p>Any message.</p>
+
+    <h3>Outputs</h3>
+    <p>None &mdash; this node is a terminal debug sink, like the built-in debug node.</p>
+
+    <h3>Node Status</h3>
+    <p>Shown immediately on deploy (not just after the first message), and refreshed on every
+    message this node receives:</p>
+    <ul>
+        <li>Green dot, "&lt;channel&gt;: on" &mdash; the channel is active; messages are being logged.</li>
+        <li>Grey ring, "&lt;channel&gt;: off" &mdash; the channel is inactive; messages are dropped.</li>
+        <li>Grey ring, "disabled" &mdash; the <b>Enabled</b> checkbox is unchecked.</li>
+    </ul>
+    <p>Since there's no live event for context changes, the status won't update on its own if the
+    channel is toggled elsewhere (Setup, a wired message) while no message passes through this
+    node &mdash; it's accurate as of deploy and as of each message received.</p>
+</script>

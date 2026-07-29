@@ -1,0 +1,161 @@
+<script type="text/javascript">
+    RED.nodes.registerType('debug-level-config', {
+        category: 'config',
+        defaults: {
+            name:         { value: 'Debug Levels' },
+            contextKey:   { value: 'debugLevel', required: true },
+            contextScope: { value: 'global' },
+            contextStore: { value: '' },
+            channels:     { value: [] }
+        },
+        label: function () {
+            return this.name || 'Debug Levels';
+        },
+        oneditprepare: function () {
+            var contextSettings = RED.settings.context || {};
+            var stores = contextSettings.stores || [];
+            var defaultStore = contextSettings.default;
+
+            var storeSelect = $('#node-config-input-contextStore');
+            var currentStore = this.contextStore || '';
+            storeSelect.empty();
+            storeSelect.append($('<option></option>').attr('value', '')
+                .text(defaultStore ? '(default: ' + defaultStore + ')' : '(default store)'));
+            stores.forEach(function (store) {
+                if (store !== defaultStore) {
+                    storeSelect.append($('<option></option>').attr('value', store).text(store));
+                }
+            });
+            if (currentStore && storeSelect.find('option[value="' + currentStore + '"]').length === 0) {
+                storeSelect.append($('<option></option>').attr('value', currentStore).text(currentStore));
+            }
+            storeSelect.val(currentStore);
+
+            var list = $('#node-config-channel-list');
+
+            var MAX_CHANNELS = 16;
+
+            // The index editableList passes to addItem is only correct at the
+            // moment that item was added — it's never retroactively updated
+            // when a sibling is removed. Without this, deleting a channel
+            // leaves survivors showing their old ("stale") bit number, and a
+            // freshly-added channel can end up labeled the same bit as one
+            // of them. Recompute every row's displayed label from its live
+            // DOM position after every add/remove instead of trusting the
+            // one-time index argument.
+            //
+            // Also enforces the 16-channel cap here: editableList's own
+            // maxItems option doesn't reliably stop the built-in add button
+            // once the limit is hit, so strip anything past the 16th row
+            // immediately, with a visible warning.
+            function renumberChannels() {
+                var items = list.editableList('items');
+                if (items.length > MAX_CHANNELS) {
+                    items.slice(MAX_CHANNELS).each(function () {
+                        $(this).remove();
+                    });
+                    RED.notify('Only ' + MAX_CHANNELS + ' debug channels are supported (one per bit) — the extra channel was removed.', 'warning');
+                    items = list.editableList('items');
+                }
+                items.each(function (i) {
+                    $(this).find('.channel-bit-index').text('Bit ' + i);
+                    $(this).find('.channel-label-input').attr('placeholder', 'Channel ' + i);
+                });
+            }
+
+            list.css({ 'min-height': '320px', 'min-width': '450px' }).editableList({
+                addItem: function (container, index, data) {
+                    var label = (data && data.label !== undefined) ? data.label : '';
+                    container.css({ display: 'flex', 'align-items': 'center' });
+                    $('<span class="channel-bit-index"></span>', { style: 'display:inline-block; width:45px; color:#888;' })
+                        .text('Bit ' + index).appendTo(container);
+                    var input = $('<input type="text" class="channel-label-input">', {
+                        style: 'flex:1; margin-left:8px;',
+                        placeholder: 'Channel ' + index
+                    }).appendTo(container);
+                    input.val(label);
+                    renumberChannels();
+                },
+                removable: true,
+                sortable: false,
+                maxItems: 16,
+                removeItem: function () {
+                    setTimeout(renumberChannels, 0);
+                }
+            });
+
+            var channels = this.channels || [];
+            channels.forEach(function (label) {
+                list.editableList('addItem', { label: label });
+            });
+        },
+        oneditsave: function () {
+            var channels = [];
+            $('#node-config-channel-list').editableList('items').each(function () {
+                channels.push($(this).find('input[type="text"]').val() || '');
+            });
+            // Hard backstop: never persist more than 16 channels, regardless
+            // of whether the live UI cap above was somehow bypassed.
+            this.channels = channels.slice(0, 16);
+        }
+    });
+</script>
+
+<script type="text/html" data-template-name="debug-level-config">
+    <div class="form-row">
+        <label for="node-config-input-name"><i class="fa fa-tag"></i> Name</label>
+        <input type="text" id="node-config-input-name" placeholder="Debug Levels">
+    </div>
+
+    <div class="form-row">
+        <label for="node-config-input-contextKey"><i class="fa fa-database"></i> Context Key</label>
+        <input type="text" id="node-config-input-contextKey" placeholder="debugLevel">
+    </div>
+
+    <div class="form-row">
+        <label for="node-config-input-contextScope"><i class="fa fa-crosshairs"></i> Scope</label>
+        <select id="node-config-input-contextScope">
+            <option value="global">global</option>
+            <option value="flow">flow</option>
+        </select>
+    </div>
+
+    <div class="form-row">
+        <label for="node-config-input-contextStore"><i class="fa fa-archive"></i> Store</label>
+        <select id="node-config-input-contextStore" style="width:70%;"></select>
+    </div>
+
+    <hr>
+    <div class="form-row" style="margin-bottom:4px;">
+        <label style="width:auto;"><i class="fa fa-th-list"></i> Channels</label>
+    </div>
+    <div class="form-row" style="width:100%;">
+        <ol id="node-config-channel-list"></ol>
+    </div>
+    <div class="form-tips">Bit position is fixed by list order (top = Bit 0). Deleting a channel shifts every
+    channel below it down one bit &mdash; make sure any Debug/Setup nodes referencing those bits get re-checked.
+    Max 16 channels.</div>
+</script>
+
+<script type="text/html" data-help-name="debug-level-config">
+    <p>Shared, hidden configuration for bitmask-based debug channels. Does not appear on the
+    canvas &mdash; create or edit it from the Config picker on a <b>Debug</b> or <b>Setup</b> node.</p>
+
+    <h3>Properties</h3>
+    <dl class="message-properties">
+        <dt>Context Key</dt>
+        <dd>The context variable name used to store the 16-bit debug level integer (0-65535).</dd>
+        <dt>Scope</dt>
+        <dd><code>global</code> &mdash; one shared debug level for the whole instance. <code>flow</code> &mdash; a separate debug level per flow tab, even with the same Context Key.</dd>
+        <dt>Store</dt>
+        <dd>Which configured context store (see <code>contextStorage</code> in <code>settings.js</code>) persists the value &mdash; e.g. <code>memory</code> (cleared on restart) or <code>file</code> (survives restarts). Populated from your runtime's actual configured stores.</dd>
+        <dt>Channels</dt>
+        <dd>Add, rename, or remove channels. Each channel's position in the list is its bit
+        (top = bit 0). These labels appear throughout the <b>Debug</b> and <b>Setup</b> node editors.</dd>
+    </dl>
+
+    <h3>Details</h3>
+    <p>This config node defines the set of debug channels, each represented by a single bit in a
+    16-bit integer stored in Node-RED context. Multiple <b>Debug</b> and <b>Setup</b> nodes
+    reference the same config to share one common set of channels.</p>
+</script>

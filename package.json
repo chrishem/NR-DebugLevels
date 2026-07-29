@@ -1,0 +1,38 @@
+{
+  "name": "node-red-contrib-debug-levels",
+  "version": "0.1.0",
+  "description": "Bitmask-based debug channel gating for Node-RED. Define up to 16 independent, user-labeled debug channels and gate message flow based on which channels are active.",
+  "keywords": [
+    "node-red",
+    "debug",
+    "bitmask",
+    "channels",
+    "gate",
+    "logging",
+    "diagnostics"
+  ],
+  "license": "MIT",
+  "author": "",
+  "repository": {
+    "type": "git",
+    "url": ""
+  },
+  "node-red": {
+    "version": ">=2.0.0",
+    "nodes": {
+      "debug-level-config": "nodes/debug-level-config.js",
+      "debug-set": "nodes/debug-set.js",
+      "debug-channel": "nodes/debug-channel.js"
+    }
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "files": [
+    "nodes/",
+    "icons/",
+    "examples/",
+    "README.md",
+    "LICENSE"
+  ]
+}
