@@ -1,0 +1,97 @@
+<script type="text/javascript">
+    RED.nodes.registerType('debug-gate', {
+        category: 'Gated Debug',
+        color: '#f3b567',
+        defaults: {
+            name:        { value: '' },
+            debugConfig: { value: '', type: 'debug-level-config', required: true },
+            channel:     { value: 0, required: true }
+        },
+        inputs: 1,
+        outputs: 1,
+        icon: 'font-awesome/fa-filter',
+        paletteLabel: 'Gate',
+        label: function () {
+            if (this.name) { return this.name; }
+            var cfgNode = RED.nodes.node(this.debugConfig);
+            var channelLabel = (cfgNode && cfgNode.channels && cfgNode.channels[this.channel]) || ('channel ' + this.channel);
+            return 'gate: ' + channelLabel;
+        },
+        oneditprepare: function () {
+            var node = this;
+
+            function renderChannelOptions() {
+                var configId = $('#node-input-debugConfig').val();
+                var select = $('#node-input-channel');
+                var current = node.channel;
+                select.empty();
+
+                var cfgNode = (configId && configId !== '_ADD_') ? RED.nodes.node(configId) : null;
+                var channels = (cfgNode && cfgNode.channels) || [];
+
+                if (channels.length === 0) {
+                    select.append($('<option></option>').attr('value', '').text('(no channels defined in config)'));
+                } else {
+                    channels.forEach(function (label, i) {
+                        select.append($('<option></option>').attr('value', i).text('Bit ' + i + ': ' + (label || ('Channel ' + i))));
+                    });
+                }
+                select.val(current);
+            }
+
+            renderChannelOptions();
+            $('#node-input-debugConfig').on('change', renderChannelOptions);
+        },
+        oneditsave: function () {
+            this.channel = parseInt($('#node-input-channel').val(), 10) || 0;
+        }
+    });
+</script>
+
+<script type="text/html" data-template-name="debug-gate">
+    <div class="form-row">
+        <label for="node-input-name"><i class="fa fa-tag"></i> Name</label>
+        <input type="text" id="node-input-name" placeholder="Name">
+    </div>
+
+    <div class="form-row">
+        <label for="node-input-debugConfig"><i class="fa fa-cog"></i> Config</label>
+        <input type="text" id="node-input-debugConfig">
+    </div>
+
+    <div class="form-row">
+        <label for="node-input-channel"><i class="fa fa-th-list"></i> Channel</label>
+        <select id="node-input-channel" style="width:70%;"></select>
+    </div>
+</script>
+
+<script type="text/html" data-help-name="debug-gate">
+    <p>Passes a message through to its output only when its one selected channel is currently
+    active; drops it (no output at all) when the channel is inactive. Use it to gate an entire
+    branch of a flow on a debug channel, rather than just logging.</p>
+
+    <h3>Properties</h3>
+    <dl class="message-properties">
+        <dt>Config</dt>
+        <dd>The <code>debug-level-config</code> node that defines the context variable and channel labels.</dd>
+        <dt>Channel</dt>
+        <dd>The single channel this node gates on.</dd>
+    </dl>
+
+    <h3>Inputs</h3>
+    <p>Any message.</p>
+
+    <h3>Outputs</h3>
+    <p>The unmodified input message, forwarded only while the selected channel is active.</p>
+
+    <h3>Node Status</h3>
+    <p>Shown immediately on deploy (not just after the first message), and refreshed on every
+    message this node receives:</p>
+    <ul>
+        <li>Green dot, "&lt;channel&gt;: open" &mdash; the channel is active; messages are forwarded.</li>
+        <li>Grey ring, "&lt;channel&gt;: closed" &mdash; the channel is inactive; messages are dropped.</li>
+    </ul>
+    <p>Since there's no live event for context changes, the status won't update on its own if the
+    channel is toggled elsewhere (Setup, a wired message) while no message passes through this
+    node &mdash; it's accurate as of deploy and as of each message received.</p>
+</script>

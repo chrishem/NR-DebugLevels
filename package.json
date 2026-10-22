@@ -25,7 +25,8 @@
     "nodes": {
       "debug-level-config": "nodes/debug-level-config.js",
       "debug-set": "nodes/debug-set.js",
-      "debug-channel": "nodes/debug-channel.js"
+      "debug-channel": "nodes/debug-channel.js",
+      "debug-gate": "nodes/debug-gate.js"
     }
   },
   "engines": {

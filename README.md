@@ -15,7 +15,7 @@ Or install via the Node-RED Palette Manager.
 
 ## Nodes
 
-Three pieces: one hidden config node, and two nodes you actually drag onto the canvas.
+Four pieces: one hidden config node, and three nodes you actually drag onto the canvas.
 
 ### debug-level-config (hidden config node)
 
@@ -41,6 +41,15 @@ active. Drop it in wherever you'd otherwise use the built-in debug node.
 - No output pin — it's a terminal debug sink, same as the built-in debug node
 - **Status** — shows the channel's on/off state immediately on deploy (green dot / grey ring), not just after the first message; also shows "disabled" when unchecked. Doesn't live-update from a toggle elsewhere if no message passes through in between — accurate as of deploy and as of each message received.
 
+### Gate (`debug-gate` type)
+
+Passes a message through to its single output only when its one selected channel is currently
+active; drops it (no output) when the channel is inactive. Unlike **Debug**, it doesn't log
+anything — it's for gating a branch of a flow on a channel, not inspecting messages.
+
+- **Channel** — pick exactly one channel from the config
+- **Status** — same green dot / grey ring convention as **Debug** ("open"/"closed" instead of "on"/"off")
+
 ### Setup (`debug-set` type)
 
 Enables/disables channels two ways: checkboxes in its own edit dialog, or wired input.
@@ -60,7 +69,8 @@ Ch15  Ch14  Ch13  Ch12  Ch11  Ch10  Ch9  Ch8  Ch7  Ch6  Ch5  Ch4  Ch3  Ch2  Ch1 
 ```
 
 **Setup** writes this integer (checkbox state on deploy, or bitwise ops from a wired message).
-**Debug** reads it and logs only when its selected bit is set.
+**Debug** reads it and logs only when its selected bit is set. **Gate** reads it the same way
+but forwards the message instead of logging it.
 
 ## Example
 
