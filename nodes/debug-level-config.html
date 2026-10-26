@@ -148,7 +148,10 @@
         <dt>Scope</dt>
         <dd><code>global</code> &mdash; one shared debug level for the whole instance. <code>flow</code> &mdash; a separate debug level per flow tab, even with the same Context Key.</dd>
         <dt>Store</dt>
-        <dd>Which configured context store (see <code>contextStorage</code> in <code>settings.js</code>) persists the value &mdash; e.g. <code>memory</code> (cleared on restart) or <code>file</code> (survives restarts). Populated from your runtime's actual configured stores.</dd>
+        <dd>Which configured context store (see <code>contextStorage</code> in <code>settings.js</code>) persists the value &mdash; e.g. <code>memory</code> (cleared on restart) or <code>file</code> (survives restarts). Populated from your runtime's actual configured stores.
+        Any store other than <code>memory</code> is treated as persistent: a <b>Setup</b> node
+        pointed at it stops force-applying its checkboxes on every (re)start and hides them in
+        its editor, since the on-disk value is authoritative at that point.</dd>
         <dt>Channels</dt>
         <dd>Add, rename, or remove channels. Each channel's position in the list is its bit
         (top = bit 0). These labels appear throughout the <b>Debug</b> and <b>Setup</b> node editors.</dd>

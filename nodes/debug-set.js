@@ -26,7 +26,17 @@ module.exports = function (RED) {
         // Push the checkbox-defined state live as soon as this node starts
         // (every deploy that (re)creates it) — this is the "direct checkbox"
         // control path. Wired input below is the "programmatic" path.
+        //
+        // Skipped entirely when the config's store is persistent (not
+        // "memory"): the whole point of a persistent store is that it
+        // survives restarts, so forcing the checkbox state on every restart
+        // would defeat it. The editor hides the checkboxes in that case too
+        // (see debug-set.html) — on-disk state is authoritative instead.
         (function applyConfiguredState() {
+            if (node.configNode.isPersistentStore()) {
+                updateStatus();
+                return;
+            }
             var level = 0;
             for (var i = 0; i < node.bits.length; i++) {
                 if (node.bits[i]) { level |= (1 << i); }

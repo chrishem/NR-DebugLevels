@@ -67,6 +67,21 @@ module.exports = function (RED) {
         node.getLabel = function (bit) {
             return node.channels[bit] || ('Channel ' + bit);
         };
+
+        /**
+         * True when the resolved context store survives a restart (anything
+         * other than the "memory" store). Setup nodes use this to decide
+         * whether their "channels active on deploy" checkboxes should ever
+         * overwrite what's already on disk.
+         */
+        node.isPersistentStore = function () {
+            var name = node.contextStore;
+            if (!name) {
+                var cs = RED.settings.contextStorage;
+                name = (cs && typeof cs.default === 'string') ? cs.default : 'memory';
+            }
+            return name !== 'memory';
+        };
     }
 
     RED.nodes.registerType('debug-level-config', DebugLevelConfigNode);

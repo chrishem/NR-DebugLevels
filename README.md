@@ -54,7 +54,7 @@ anything — it's for gating a branch of a flow on a channel, not inspecting mes
 
 Enables/disables channels two ways: checkboxes in its own edit dialog, or wired input.
 
-- **Channels active on deploy** — check a channel and Deploy to force it on immediately (and off if unchecked). This is a declarative "this is the state I want" panel — it reapplies every time the node (re)starts, overwriting whatever a wired message set since the last deploy.
+- **Channels active on deploy** — check a channel and Deploy to force it on immediately (and off if unchecked). This is a declarative "this is the state I want" panel — it reapplies every time the node (re)starts, overwriting whatever a wired message set since the last deploy. **Hidden entirely when the config's Store is persistent** (anything other than `memory`) — a persistent store already survives restarts on its own, so these checkboxes would only fight it; the on-disk value wins instead, and you change channels via wired input.
 - **Wired input** — send it a message with `msg.debugAction` (`set`/`clear`/`toggle`/`set-all`/`clear-all`/`toggle-all`/`write`) and `msg.debugMask` to change channels programmatically at runtime (inject, MQTT, dashboard switches, HTTP, etc.). A message with no `msg.debugAction` just reports the current state without changing anything.
 - Outputs `msg.debugLevel`, `msg.debugBits`, `msg.debugLabels`, and `msg.debugActive`
 
@@ -75,16 +75,19 @@ but forwards the message instead of logging it.
 ## Example
 
 1. Create one **Debug Setup** flow: drag a **Setup** node, create a new **debug-level-config**
-   (Context Key `debugLevel`, Store `file` for persistence), and add your channel names.
+   (Context Key `debugLevel`, Store `memory` to start with), and add your channel names.
 2. Check the channels you want active by default in that **Setup** node and Deploy.
 3. Add **Debug** nodes inline wherever you want gated logging — pick the one channel each cares about.
 4. Optionally wire an inject/dashboard switch/MQTT node into the same **Setup** node's input to flip channels at runtime.
+5. If you want channel state to survive restarts, switch the config node's Store to `file` instead.
+   The **Setup** node's checkboxes disappear at that point (on-disk state becomes authoritative) — use
+   wired input to change channels going forward.
 
 An importable example flow is included in the `examples/` folder.
 
 ## Integration with existing context variables
 
-If you already have a debug level integer stored in context under a different name (e.g. `debugenabled`), just set the config node's Context Key to match. The package reads and writes whatever key you point it at — no migration needed. Note that a **Setup** node forces its checkbox state onto that key at every deploy, so if something else (e.g. a dashboard switch) already owns that variable independently, either skip the checkboxes (leave them all unchecked and only use wired input) or let **Setup** be the single owner going forward.
+If you already have a debug level integer stored in context under a different name (e.g. `debugenabled`), just set the config node's Context Key to match. The package reads and writes whatever key you point it at — no migration needed. A **Setup** node forces its checkbox state onto that key at every deploy *only* when the config's Store is `memory` — so if something else (e.g. a dashboard switch) already owns that variable independently under a `memory` store, either skip the checkboxes (leave them all unchecked and only use wired input) or let **Setup** be the single owner going forward. Pointing the config at a persistent store sidesteps this entirely: the checkboxes disappear and the on-disk value is always authoritative.
 
 ## Runtime control via messages
 

@@ -27,12 +27,39 @@
             // as they happen sidesteps that race entirely.
             var liveBits = Array.isArray(node.bits) ? node.bits.slice() : [];
 
+            // Mirrors debug-level-config.js's node.isPersistentStore() — the
+            // editor only has the resolved store's name (no module info), so
+            // this is a name-based heuristic: anything but "memory" counts
+            // as persistent. Kept in sync with the runtime check by hand.
+            function resolvedStoreName(cfgNode) {
+                if (!cfgNode) { return 'memory'; }
+                return cfgNode.contextStore || (RED.settings.context && RED.settings.context.default) || 'memory';
+            }
+            function isPersistentStore(cfgNode) {
+                return resolvedStoreName(cfgNode) !== 'memory';
+            }
+
             function renderCheckboxes() {
                 var configId = $('#node-input-debugConfig').val();
                 var container = $('#debug-set-bits');
                 container.empty();
 
                 var cfgNode = (configId && configId !== '_ADD_') ? RED.nodes.node(configId) : null;
+
+                if (isPersistentStore(cfgNode)) {
+                    $('#debug-set-bits-label').hide();
+                    $('#debug-set-bits-tip').hide();
+                    container.css('display', 'block');
+                    container.append($('<div class="form-tips"></div>').text(
+                        'This config\'s Store ("' + resolvedStoreName(cfgNode) + '") persists across restarts, ' +
+                        'so the on-disk value is always authoritative — there\'s nothing to declare here. ' +
+                        'Use wired input to change channels at runtime.'
+                    ));
+                    return;
+                }
+                $('#debug-set-bits-label').show();
+                $('#debug-set-bits-tip').show();
+
                 var channels = (cfgNode && cfgNode.channels) || [];
 
                 if (channels.length === 0) {
@@ -93,11 +120,11 @@
     </div>
 
     <hr>
-    <div class="form-row" style="margin-bottom:4px;">
+    <div class="form-row" id="debug-set-bits-label" style="margin-bottom:4px;">
         <label style="width:auto;"><i class="fa fa-th-list"></i> Channels active on deploy:</label>
     </div>
     <div id="debug-set-bits" style="min-height:140px; max-height:280px; overflow-y:auto;"></div>
-    <div class="form-tips">Checking a box here and deploying sets that channel's state immediately.
+    <div class="form-tips" id="debug-set-bits-tip">Checking a box here and deploying sets that channel's state immediately.
     Wired input (see help) can also change state programmatically at runtime.</div>
 </script>
 
@@ -112,7 +139,12 @@
         <dd>Check any channel to force it <b>on</b> as soon as this node starts (every deploy that
         recreates it). Unchecked channels are forced <b>off</b> at that same moment. This is a
         declarative "this is the state I want" panel &mdash; it will overwrite whatever a wired
-        message previously set, every time it (re)starts.</dd>
+        message previously set, every time it (re)starts.
+        <br><br>
+        Hidden when the selected config's <b>Store</b> is persistent (anything other than
+        <code>memory</code>) &mdash; a persistent store survives restarts on its own, so the
+        on-disk value is authoritative instead and these checkboxes would only fight it. Use
+        wired input to change channels in that case.</dd>
     </dl>
 
     <h3>Inputs (programmatic control)</h3>
